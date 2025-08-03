@@ -106,20 +106,28 @@ struct ContentView: View {
     private let fileManager = FileManager.default
     private let saveTimer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
     
-    // Add cached documents directory
+    // Add cached documents directory - using repo-local folder
     private let documentsDirectory: URL = {
-        let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("Freewrite")
+        // Get the project root directory by finding the path containing freewrite.xcodeproj
+        guard let projectPath = Bundle.main.executableURL?.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent() else {
+            // Fallback to current working directory if bundle path fails
+            let currentPath = FileManager.default.currentDirectoryPath
+            return URL(fileURLWithPath: currentPath).appendingPathComponent("freewrite-entries-BA")
+        }
         
-        // Create Freewrite directory if it doesn't exist
+        let directory = projectPath.appendingPathComponent("freewrite-entries-BA")
+        
+        // Create freewrite-entries-BA directory if it doesn't exist
         if !FileManager.default.fileExists(atPath: directory.path) {
             do {
                 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-                print("Successfully created Freewrite directory")
+                print("Successfully created freewrite-entries-BA directory at: \(directory.path)")
             } catch {
                 print("Error creating directory: \(error)")
             }
         }
         
+        print("Using directory: \(directory.path)")
         return directory
     }()
     
