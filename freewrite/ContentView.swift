@@ -108,27 +108,54 @@ struct ContentView: View {
     
     // Add cached documents directory - using repo-local folder
     private let documentsDirectory: URL = {
-        // Get the project root directory by finding the path containing freewrite.xcodeproj
-        guard let projectPath = Bundle.main.executableURL?.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent() else {
-            // Fallback to current working directory if bundle path fails
-            let currentPath = FileManager.default.currentDirectoryPath
-            return URL(fileURLWithPath: currentPath).appendingPathComponent("freewrite-entries-BA")
+        // Try to find the project root by looking for freewrite.xcodeproj
+        let fileManager = FileManager.default
+        var searchPath = URL(fileURLWithPath: fileManager.currentDirectoryPath)
+        
+        // Look for freewrite.xcodeproj in current directory and parent directories
+        for _ in 0..<10 { // Limit search to prevent infinite loop
+            let xcodeProjectPath = searchPath.appendingPathComponent("freewrite.xcodeproj")
+            if fileManager.fileExists(atPath: xcodeProjectPath.path) {
+                // Found the project root
+                let directory = searchPath.appendingPathComponent("freewrite-entries-BA")
+                
+                // Create freewrite-entries-BA directory if it doesn't exist
+                if !fileManager.fileExists(atPath: directory.path) {
+                    do {
+                        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+                        print("Successfully created freewrite-entries-BA directory at: \(directory.path)")
+                    } catch {
+                        print("Error creating directory: \(error)")
+                    }
+                }
+                
+                print("Using directory: \(directory.path)")
+                return directory
+            }
+            
+            // Move up one directory level
+            let parentPath = searchPath.deletingLastPathComponent()
+            if parentPath == searchPath {
+                break // Reached filesystem root
+            }
+            searchPath = parentPath
         }
         
-        let directory = projectPath.appendingPathComponent("freewrite-entries-BA")
+        // Fallback: use current working directory + freewrite-entries-BA
+        print("Could not find freewrite.xcodeproj, using fallback path")
+        let fallbackDirectory = URL(fileURLWithPath: fileManager.currentDirectoryPath).appendingPathComponent("freewrite-entries-BA")
         
-        // Create freewrite-entries-BA directory if it doesn't exist
-        if !FileManager.default.fileExists(atPath: directory.path) {
+        if !fileManager.fileExists(atPath: fallbackDirectory.path) {
             do {
-                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-                print("Successfully created freewrite-entries-BA directory at: \(directory.path)")
+                try fileManager.createDirectory(at: fallbackDirectory, withIntermediateDirectories: true)
+                print("Successfully created fallback freewrite-entries-BA directory at: \(fallbackDirectory.path)")
             } catch {
-                print("Error creating directory: \(error)")
+                print("Error creating fallback directory: \(error)")
             }
         }
         
-        print("Using directory: \(directory.path)")
-        return directory
+        print("Using fallback directory: \(fallbackDirectory.path)")
+        return fallbackDirectory
     }()
     
     // Add shared prompt constant
